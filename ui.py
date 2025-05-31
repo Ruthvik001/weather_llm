@@ -8,7 +8,7 @@ query = st.text_input("Enter your query:")
 
 if st.button("Submit Query"):
     try:
-        response = requests.post("http://localhost:8002/query", json={"query":query}, timeout = 15)
+        response = requests.post("http://localhost:8002/input-query", json={"query":query}, timeout = 15)
         if response.status_code == 200:
             data = response.json()
             print(response)

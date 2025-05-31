@@ -6,6 +6,7 @@ import pandas as pd
 
 from handler import app, SensorRegistry
 
+
 client = TestClient(app)
 
 
@@ -26,19 +27,23 @@ class TestAddWeatherDataEndpoint(unittest.TestCase):
             ]
         }
 
-    @patch("handler.get_pipeline")
     @patch("handler.os.path.exists")
     @patch("handler.pd.read_csv")
-    def test_sensor_valid_input(self, mock_read_csv, mock_exists, mock_get_pipeline):
+    def test_sensor_valid_input(self, mock_read_csv, mock_exists):
 
-        mock_pipeline = MagicMock()
-        mock_get_pipeline.return_value = mock_pipeline
         mock_exists.return_value = True
         mock_read_csv.return_value = pd.DataFrame({"sensor_id": [1]})
+        import handler
+        original_pipeline = handler.pipeline
+        mock_pipeline = MagicMock()
+        mock_pipeline.append_readings = MagicMock()
+        handler.pipeline = mock_pipeline
 
-        response = self.client.post("/weather-data", json=self.payload)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["status"], "success")
+
+        response = client.post("/ingest-weather-data", json=self.payload)
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "success"
         mock_pipeline.append_readings.assert_called_once()
 
 

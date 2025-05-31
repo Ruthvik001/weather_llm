@@ -8,8 +8,6 @@ from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core import VectorStoreIndex
 from llama_index.llms.google_genai import GoogleGenAI
 from llama_index.core import Document
-# api_key = "AIzaSyA0s1-XmiWc_ao8F106Qc6h9z0Eq2FWa4s"
-# path = "D:\Downloads\project\data.csv"
 
 
 class NoDataAvailableError(Exception):
@@ -29,10 +27,6 @@ class PandasParser(PandasInstructionParser):
             raise NoDataAvailableError("Input is incorrect, Please try again with different input")
 
         return result
-
-
-
-
 
 class NLPPandasPipeline:
     def __init__(self, csv_path: str, api_key: str):
@@ -55,7 +49,7 @@ class NLPPandasPipeline:
             ("What is the average temperature per sensor in the last 24 hours?",
              "df[df['timestamp'] >= pd.Timestamp.now() - pd.Timedelta(hours=24)].groupby('sensor_id')['temperature'].mean()"),
             ("What is the temperature recorded by sensor 1? ",
-             "df[df['sensor_id'] == 1].sort_values(by='timestamp', ascending=False)reset_index(drop=True).iloc[0]['temperature']"),
+             "df[df['sensor_id'] == 1].sort_values(by='timestamp', ascending=False).reset_index(drop=True).iloc[0]['temperature']"),
             ("What is the temperature recorded by sensor 2? ",
              "df[df['sensor_id'] == 2].sort_values(by='timestamp', ascending=False)reset_index(drop=True).iloc[0]['temperature']"),
             ("What is the average temperature recorded by sensor 1? ",
@@ -107,7 +101,7 @@ class NLPPandasPipeline:
             few_shot_examples=few_shot_examples
         )
 
-    def run(self, query_str: str):
+    def custom_run(self, query_str: str):
         pandas_prompt = self.get_prompt(query_str)
         pandas_output_parser = PandasParser(self.df)
         print("######################")
@@ -133,7 +127,7 @@ class NLPPandasPipeline:
         )
 
         qp.add_chain(["input", "pandas_prompt", "llm1", "pandas_output_parser"])
-        # print(f"The output from llm1 is {llm1}")
+
         qp.add_links([
             Link("input", "response_synthesis_prompt", dest_key="query_str"),
             Link("llm1", "response_synthesis_prompt", dest_key="pandas_instructions"),
@@ -151,11 +145,7 @@ class NLPPandasPipeline:
         except NoDataAvailableError as e:
             print("The pipeline has been stopped ")
 
-            return "For the provided date ranges the data is not available"
-
-
-
-
+            return str(e)
 
     def append_readings(self, new_data: pd.DataFrame):
         new_data['timestamp'] = pd.to_datetime(new_data['timestamp'])

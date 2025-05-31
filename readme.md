@@ -32,6 +32,7 @@ Sensor Weather Data Application
       "location": "Mumbai"
     }
 2) Sending weather data for sensor ID 
+    Endpoint is POST /ingest-weather-data
  Body
 ~~~
  {
@@ -46,4 +47,4 @@ Sensor Weather Data Application
    ]
  }
 
----
+~~~

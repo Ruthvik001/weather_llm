@@ -8,9 +8,12 @@ from llm_pipeline import NLPPandasPipeline
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+import os
+from dotenv import load_dotenv
+load_dotenv()
+from contextlib import asynccontextmanager
 
-app = FastAPI()
-
+pipeline = None
 
 class SensorRegistry:
     SENSOR_FILE =  "sensors.csv"
@@ -31,13 +34,22 @@ class QueryRequest(BaseModel):
 class Sensor(BaseModel):
     sensor_id: int
     location: str
-# AIzaSyA0s1-XmiWc_ao8F106Qc6h9z0Eq2FWa4s
-def get_pipeline():
-    return NLPPandasPipeline(csv_path="data.csv", api_key="AIzaSyA0s1-XmiWc_ao8F106Qc6h9z0Eq2FWa4s")
-@app.post("/weather-data")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global pipeline
+    api_key = os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        raise RuntimeError("GOOGLE_API_KEY not set in environment.")
+    pipeline = NLPPandasPipeline(csv_path="data.csv", api_key=api_key)
+    logger.info("Pipeline initialized successfully.")
+    yield
+app = FastAPI(lifespan=lifespan)
+
+@app.post("/ingest-weather-data")
 async def add_weather_data(request: WeatherDataRequest):
     try:
-        pipeline = get_pipeline()
         logging.info(f"Request body {request.data}")
         # new_data = pd.DataFrame([entry for entry in request.data])
         new_data = pd.DataFrame([entry.dict() for entry in request.data])
@@ -64,14 +76,14 @@ async def add_weather_data(request: WeatherDataRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@app.post("/query")
+
+@app.post("/input-query")
 async def query_pipeline(request: QueryRequest):
     try:
-        pipeline = get_pipeline()
         logging.info("The query from the UI is {}".format(request.query))
         # print(f"The query which is received from the UI  is {request.query}")
 
-        response = pipeline.run(request.query)
+        response = pipeline.custom_run(request.query)
 
         if isinstance(response, str):
             return {"response": response}
@@ -85,7 +97,7 @@ async def query_pipeline(request: QueryRequest):
         raise HTTPException(status_code=500, detail="Something went wrong. Please try again later.")
 
 
-@app.post("/register_sensor")
+@app.post("/register-sensor")
 async def registering_sensor(sensor: Sensor):
     try:
         if os.path.exists(SensorRegistry.SENSOR_FILE):
@@ -109,4 +121,5 @@ async def registering_sensor(sensor: Sensor):
         }
 
     except Exception as e:
+
         raise HTTPException(status_code=400, detail=str(e))
